@@ -54,6 +54,15 @@ if button_clicked:
     
     if headings_count and soup:
         st.write('### Results:')
+        
+        rows_data = []  # Initialize rows_data here
+        
+        for level, count in headings_count.items():
+            if count > 0:
+                headings = soup.find_all(level.lower())
+                for index, heading in enumerate(headings, start=1):
+                    rows_data.append([heading.text.strip(), level, index])
+        
         st.table(rows_data, headers=["Heading", "Type", "Index"])
 
         write_to_csv(headings_count, soup)
