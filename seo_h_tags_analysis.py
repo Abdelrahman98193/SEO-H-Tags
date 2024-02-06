@@ -1,26 +1,60 @@
+import requests
 import streamlit as st
-import pandas as pd
-import base64
+from bs4 import BeautifulSoup
+import csv
+import io
 
-# Sample headings data - you can modify this based on your requirements
-sample_headings_data = {
-    'Heading': ['Heading 1', 'Heading 2', 'Heading 3'],
-    'Type': ['Type A', 'Type B', 'Type C'],
-    'Index': [1, 2, 3]
-}
+def count_headings(url):
+    if not url:
+        st.write('URL is empty. Please provide a valid URL.')
+        return None, None
 
-# Function to write heading data to a CSV file
-def write_to_csv(data):
-    df = pd.DataFrame(data)
-    csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()
-    href = f'<a href="data:file/csv;base64,{b64}" download="headings_data.csv">Download CSV file</a>'
-    return href
+    response = requests.get(url)
 
-# Main Streamlit app code
-st.title('Headings Data Analysis')
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-if st.button('Show Headings Data'):
-    st.table(pd.DataFrame(sample_headings_data))
+        headings_count = {}
+        for heading_level in range(1, 7):
+            headings = soup.find_all(f'h{heading_level}')
+            headings_count[f'H{heading_level}'] = len(headings)
 
-    st.markdown(write_to_csv(sample_headings_data), unsafe_allow_html=True)
+        return headings_count, soup
+    else:
+        st.write('Failed to fetch the URL. Please check the provided URL.')
+        return None, None
+
+def write_to_csv(headings_count, soup):
+    rows_data = []
+    for level, count in headings_count.items():
+        if count > 0:
+            headings = soup.find_all(level.lower())
+            for index, heading in enumerate(headings, start=1):
+                rows_data.append([heading.text.strip(), level, index])
+
+    csv_data = io.StringIO()
+    writer = csv.writer(csv_data)
+    writer.writerow(['Heading', 'Type', 'Index'])
+    for row_data in rows_data:
+        writer.writerow(row_data)
+
+    st.download_button(
+        label="Download headings_analysis.csv",
+        data=csv_data.getvalue(),
+        file_name='headings_analysis.csv',
+        mime='text/csv',
+    )
+
+# Input URL for testing
+url = st.text_input('Enter the URL to analyze: ')
+button_clicked = st.button('Generate Results and CSV File')
+
+if button_clicked:
+    headings_count, soup = count_headings(url)
+    
+    if headings_count and soup:
+        st.write('### Results:')
+        st.table(rows_data, headers=["Heading", "Type", "Index"])
+
+        write_to_csv(headings_count, soup)
+        st.write('CSV file generated successfully.')
