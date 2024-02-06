@@ -8,6 +8,7 @@ Original file is located at
 """
 
 import requests
+import streamlit as st
 from bs4 import BeautifulSoup
 import csv
 
@@ -43,7 +44,7 @@ def write_to_csv(headings_count, soup):
             writer.writerow([level, total_count])
 
 # Input URL for testing
-url = input('Enter the URL to analyze: ')
+url = st.text_input('Enter the URL to analyze: ')
 headings_count, soup = count_headings(url)
 
 if headings_count and soup:
